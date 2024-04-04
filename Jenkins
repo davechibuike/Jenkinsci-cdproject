@@ -46,7 +46,7 @@ pipeline {
                     sh "sudo systemctl daemon-reload"
 
                     // Restart Tomcat
-                    sh "sudo systemctl start tomcat"
+                    sh "sudo systemctl start tomcat9"
 
                 }
             }
