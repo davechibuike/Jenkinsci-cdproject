@@ -4,45 +4,50 @@ pipeline {
     }
 
     stages {
-        stage('Download and Deploy Tomcat') {
+        stage('SCM Checkout') {
             steps {
-                echo "Downloading Apache Tomcat"
                 script {
-                    // Define the URL for downloading Apache Tomcat
-                    def tomcatUrl = 'https://downloads.apache.org/tomcat/tomcat-9/v9.0.54/bin/apache-tomcat-9.0.54.tar.gz'
+                    git tool: 'Default', credentialsId: 'git-cred', url: 'https://github.com/davechibuike/Jenkinsci-cdproject.git'
+                }
+            }
+        }
+
+        stage('Mvn Package') {
+            steps {
+                script {
+                    def mvnCMD = "/opt/apache-maven-3.9.6/bin/mvn"
                     
-                    // Download Apache Tomcat
-                    sh "wget -q -O tomcat.tar.gz ${tomcatUrl}"
-                    
-                    // Extract Apache Tomcat
-                    sh "tar -xzf tomcat.tar.gz"
-                    
-                    // Move Apache Tomcat to the target directory
-                    sh "sudo mv apache-tomcat-9.0.54 /home/centos/"
+                    // Build and test a single step
+                    sh "${mvnCMD} clean package test"
+                    stash(name: "Jenkinscicdfinal", includes: "target/*.war")
                 }
             }
         }
 
         stage('Deploy Application') {
+            agent {
+                label 'Jenkins_Tom_Cat_Node_2'
+            }
             steps {
                 echo "Deploying the application"
                 script {
                     // Create the target directory if it doesn't exist
-                    sh "sudo mkdir -p /home/centos/apache-tomcat-9.0.54/webapps/"
+                    sh "sudo mkdir -p /home/centos/apache-tomcat-7.0.94/webapps/"
 
                     // Remove existing WAR files
-                    sh "sudo rm -rf /home/centos/apache-tomcat-9.0.54/webapps/*.war"
+                    sh "sudo rm -rf /home/centos/apache-tomcat-7.0.94/webapps/*.war"
 
                     unstash "Jenkinscicdfinal"
 
                     // Move the WAR file to the target directory
-                    sh "sudo mv target/*.war /home/centos/apache-tomcat-9.0.54/webapps/"
+                    sh "sudo mv target/*.war /home/centos/apache-tomcat-7.0.94/webapps/"
 
                     // Reload systemd daemon
                     sh "sudo systemctl daemon-reload"
 
-                    // Start Tomcat
-                    sh "sudo /home/centos/apache-tomcat-9.0.54/bin/startup.sh"
+                    // Restart Tomcat
+                    sh "sudo systemctl start tomcat"
+
                 }
             }
         }
